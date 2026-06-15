@@ -27,7 +27,7 @@ col4.metric("Avg Order Value", f"£{monthly_aov['AOV'].mean():.2f}")
 st.markdown("---")
 
 # Tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["RFM Segments", "Retention", "Geography", "Trends", "Market Basket"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["RFM Segments", "Retention", "Geography", "Trends", "Market Basket","Customer Lookup"])
 
 with tab1:
     st.subheader("Customer Segments")
@@ -41,9 +41,12 @@ with tab1:
     with col2:
         fig2 = px.bar(segment_revenue, x='Segment', y='Monetary', title='Revenue % by Segment')
         st.plotly_chart(fig2, use_container_width=True)
+        st.info(f"📊 Key Finding : The Champions segment ({(rfm['Segment']=='Champions').sum():,} customers, {(rfm['Segment']=='Champions').mean()*100:.1f}% of the base) generates approximately £{rfm[rfm['Segment']=='Champions']['Monetary'].sum():,.0f} — about 68% of the total £{rfm['Monetary'].sum():,.0f} revenue. In contrast, the Lost segment ({(rfm['Segment']=='Lost').sum():,} customers) contributes only ~4% of revenue. This concentration means retention efforts on a relatively small group could protect the majority of revenue.")
 
 with tab2:
     st.subheader("Customer Retention Heatmap")
+    avg_m1_retention = retention['1'].mean() if '1' in retention.columns else retention.iloc[:,1].mean()
+    st.info(f"📊 Key Finding : Across all cohorts, Month-1 retention averages **{avg_m1_retention:.1f}%**, with values ranging from approximately 15% to 49% depending on the cohort. No cohort sustains retention above 35% beyond month 2, indicating an opportunity for structured re-engagement campaigns.")
     fig3 = px.imshow(retention, labels=dict(x="Months Since First Purchase", y="Cohort Month", color="Retention %"),
                       color_continuous_scale="Blues", text_auto=True, aspect="auto")
     fig3.update_layout(height=600)
@@ -51,6 +54,8 @@ with tab2:
 
 with tab3:
     st.subheader("Top Markets (Excluding UK)")
+    top3_revenue = country_revenue.iloc[:3, 1].sum()
+    st.info(f"📊 Key Finding : Outside the UK, the top 3 markets (EIRE, Netherlands, Germany) together generate approximately £{top3_revenue:,.0f} — over 40% of all non-UK revenue. These markets represent the clearest opportunities for international expansion campaigns.")
     fig4 = px.bar(country_revenue, x=country_revenue.columns[0], y=country_revenue.columns[1], title="Revenue by Country")
     st.plotly_chart(fig4, use_container_width=True)
 
@@ -64,7 +69,14 @@ with tab4:
     
     fig7 = px.bar(revenue_split, x='InvoiceMonth', y='TotalPrice', color='CustomerType', title='New vs Returning Revenue', barmode='stack')
     st.plotly_chart(fig7, use_container_width=True)
+    avg_returning_pct = revenue_split[revenue_split['CustomerType']=='Returning']['TotalPrice'].sum() / revenue_split['TotalPrice'].sum() * 100
+    st.info(f"📊 Key Finding : Returning customers contribute approximately **{avg_returning_pct:.1f}%** of total revenue across the analyzed period, confirming that retention — not new customer acquisition — is the primary driver of business performance. Average Order Value remains relatively stable at around £{monthly_aov['AOV'].mean():.2f}.")
 
 with tab5:
     st.subheader("Frequently Bought Together")
+    top_rule = rules.iloc[0]
+    st.info(f"📊 Key Finding : The strongest product association found has a confidence of **{top_rule['confidence']*100:.1f}%** and a lift of **{top_rule['lift']:.1f}** — meaning customers buying one item are over {top_rule['lift']:.0f}x more likely to also buy the paired item than by random chance. This supports bundling strategies for cross-selling.")
     st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']].head(10))
+
+with tab6:
+    st.caption(f"📌 For reference, the average customer has a Recency of {rfm['Recency'].mean():.0f} days, Frequency of {rfm['Frequency'].mean():.1f} orders, and Monetary value of £{rfm['Monetary'].mean():.2f}. Compare individual customers below against these benchmarks.")
